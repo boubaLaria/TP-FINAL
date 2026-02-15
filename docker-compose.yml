@@ -1,0 +1,171 @@
+version: '3.8'
+
+services:
+  # ============================================
+  # FRONTEND - React + Vite (Port 3000)
+  # ============================================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - VITE_API_URL=http://localhost:8080/api
+    depends_on:
+      - api-gateway
+    networks:
+      - cloudshop-network
+    restart: unless-stopped
+
+  # ============================================
+  # API GATEWAY - Express (Port 8080)
+  # ============================================
+  api-gateway:
+    build:
+      context: ./api-gateway
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      - AUTH_SERVICE_URL=http://auth-service:8081
+      - PRODUCTS_SERVICE_URL=http://products-api:8082
+      - ORDERS_SERVICE_URL=http://orders-api:8083
+      - JWT_SECRET=${JWT_SECRET:-cloudshop-secret-key-change-in-production}
+      - CORS_ORIGIN=http://localhost:3000
+    depends_on:
+      - auth-service
+      - products-api
+      - orders-api
+    networks:
+      - cloudshop-network
+    restart: unless-stopped
+
+  # ============================================
+  # AUTH SERVICE - Node.js (Port 8081)
+  # ============================================
+  auth-service:
+    build:
+      context: ./auth-service
+      dockerfile: Dockerfile
+    ports:
+      - "8081:8081"
+    environment:
+      - PORT=8081
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=cloudshop
+      - DB_USER=cloudshop
+      - DB_PASSWORD=${DB_PASSWORD:-cloudshop123}
+      - JWT_SECRET=${JWT_SECRET:-cloudshop-secret-key-change-in-production}
+      - JWT_EXPIRES_IN=15m
+      - REFRESH_TOKEN_EXPIRES_IN=7d
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - cloudshop-network
+    restart: unless-stopped
+
+  # ============================================
+  # PRODUCTS API - FastAPI (Port 8082)
+  # ============================================
+  products-api:
+    build:
+      context: ./products-api
+      dockerfile: Dockerfile
+    ports:
+      - "8082:8082"
+    environment:
+      - PORT=8082
+      - ELASTICSEARCH_HOST=elasticsearch
+      - ELASTICSEARCH_PORT=9200
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    networks:
+      - cloudshop-network
+    restart: unless-stopped
+
+  # ============================================
+  # ORDERS API - Go (Port 8083)
+  # ============================================
+  orders-api:
+    build:
+      context: ./orders-api
+      dockerfile: Dockerfile
+    ports:
+      - "8083:8083"
+    environment:
+      - PORT=8083
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=cloudshop
+      - DB_USER=cloudshop
+      - DB_PASSWORD=${DB_PASSWORD:-cloudshop123}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - cloudshop-network
+    restart: unless-stopped
+
+  # ============================================
+  # DATABASES & INFRASTRUCTURE
+  # ============================================
+  
+  # PostgreSQL - Users & Orders data
+  postgres:
+    image: postgres:16-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=cloudshop
+      - POSTGRES_USER=cloudshop
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-cloudshop123}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - cloudshop-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cloudshop -d cloudshop"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Elasticsearch - Products search
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.3
+    ports:
+      - "9200:9200"
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+    networks:
+      - cloudshop-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:9200/_cluster/health | grep -q '\"status\":\"green\"\\|\"status\":\"yellow\"'"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+    restart: unless-stopped
+
+# ============================================
+# NETWORKS
+# ============================================
+networks:
+  cloudshop-network:
+    driver: bridge
+
+# ============================================
+# VOLUMES
+# ============================================
+volumes:
+  postgres-data:
+  elasticsearch-data:
