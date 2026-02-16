@@ -51,3 +51,4 @@ htmlcov/
 
 # trivy scan times
 trivy-reports/
+k8s/configs/secrets/
