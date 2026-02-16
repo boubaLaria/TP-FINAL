@@ -48,3 +48,6 @@ htmlcov/
 *.dll
 *.so
 *.dylib
+
+# trivy scan times
+trivy-reports/
