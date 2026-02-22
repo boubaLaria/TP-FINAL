@@ -141,7 +141,12 @@ jobs:
               
               # Attendre que les statefulsets soient prêts
               echo "Waiting for statefulsets to be ready..."
-              sleep 20
+              sleep 10
+              echo "Checking statefulset status..."
+              kubectl get statefulsets -n cloudshop-prod || true
+              kubectl get pods -n cloudshop-prod | grep -E 'postgres|elasticsearch' || true
+              echo "Note: StatefulSets may take a few minutes to be fully ready"
+              sleep 10
               
               # Appliquer les Deployments
               echo "Applying Deployments..."
@@ -173,14 +178,42 @@ jobs:
             
             # Attendre que les déploiements soient prêts
             echo "Waiting for deployments to be ready..."
-            kubectl rollout status deployment/frontend -n cloudshop-prod --timeout=300s || true
-            kubectl rollout status deployment/api-gateway -n cloudshop-prod --timeout=300s || true
-            kubectl rollout status deployment/auth-service -n cloudshop-prod --timeout=300s || true
-            kubectl rollout status deployment/orders-api -n cloudshop-prod --timeout=300s || true
-            kubectl rollout status deployment/products-api -n cloudshop-prod --timeout=300s || true
+            kubectl rollout status deployment/frontend -n cloudshop-prod --timeout=120s || echo "Frontend timeout - continuing..."
+            kubectl rollout status deployment/api-gateway -n cloudshop-prod --timeout=120s || echo "API Gateway timeout - continuing..."
+            kubectl rollout status deployment/auth-service -n cloudshop-prod --timeout=120s || echo "Auth Service timeout - continuing..."
+            kubectl rollout status deployment/orders-api -n cloudshop-prod --timeout=120s || echo "Orders API timeout - continuing..."
+            kubectl rollout status deployment/products-api -n cloudshop-prod --timeout=120s || echo "Products API timeout - continuing..."
             
             # Vérifier l'état des pods
-            echo "Checking pod status..."
-            kubectl get pods -n cloudshop-prod
+            echo ""
+            echo "==========================="
+            echo "Pod Status:"
+            echo "==========================="
+            kubectl get pods -n cloudshop-prod -o wide
             
-            echo "Deployment completed successfully!"
+            echo ""
+            echo "==========================="
+            echo "Deployment Status:"
+            echo "==========================="
+            kubectl get deployments -n cloudshop-prod
+            
+            echo ""
+            echo "==========================="
+            echo "Services:"
+            echo "==========================="
+            kubectl get svc -n cloudshop-prod
+            
+            echo ""
+            echo "==========================="
+            echo "Recent Events (if any issues):"
+            echo "==========================="
+            kubectl get events -n cloudshop-prod --sort-by='.lastTimestamp' | tail -20 || true
+            
+            echo ""
+            echo "Deployment process completed!"
+            echo "Note: Pods may still be starting. Check status with: kubectl get pods -n cloudshop-prod"
+            echo ""
+            echo "To debug issues:"
+            echo "  - View pod details: kubectl describe pod <pod-name> -n cloudshop-prod"
+            echo "  - View logs: kubectl logs <pod-name> -n cloudshop-prod"
+            echo "  - View events: kubectl get events -n cloudshop-prod"
