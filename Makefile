@@ -58,11 +58,19 @@ docker-compose-down: ## Arrête l'application en local
 docker-compose-logs: ## Affiche les logs Docker Compose
 	docker-compose logs -f
 
-k8s-apply: ## Applique les manifests Kubernetes
+k8s-apply: ## Applique les manifests Kubernetes (PRODUCTION)
 	kubectl apply -f k8s/namespaces/
 	kubectl apply -f k8s/configs/
 	kubectl apply -f k8s/statefulsets/
 	kubectl apply -f k8s/deployments/
+	kubectl apply -f k8s/services/
+	kubectl apply -f k8s/ingress/
+
+k8s-apply-local: ## Applique les manifests Kubernetes (LOCAL)
+	kubectl apply -f k8s/namespaces/
+	kubectl apply -f k8s/configs/
+	kubectl apply -f k8s/statefulsets/
+	kubectl apply -f k8s/deployments/local/
 	kubectl apply -f k8s/services/
 	kubectl apply -f k8s/ingress/
 

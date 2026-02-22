@@ -1,10 +1,9 @@
-name: Build, Push and Deploy to Kubernetes
+name: Deploy to Production
 
 on:
   push:
     branches:
       - main
-      - master
   workflow_dispatch:
 
 env:

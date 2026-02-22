@@ -1,15 +1,34 @@
 # 🚀 Guide de Démarrage Rapide - CI/CD CloudShop
 
+## 🎯 Architecture CI/CD
+
+**2 workflows séparés pour éviter la duplication** :
+
+### 1️⃣ CI - Tests & Validation (`.github/workflows/ci.yml`)
+- ✅ Se déclenche sur tous les push et PRs
+- ✅ Build les images **localement** (`tp-final-*:latest`)
+- ✅ Tests, scans de sécurité, vérification de taille
+- ❌ **NE PUSH PAS** sur DockerHub
+- 🎯 **But** : Valider le code rapidement sans surcharger DockerHub
+
+### 2️⃣ CD - Production (`.github/workflows/deploy.yml`)  
+- ✅ Se déclenche uniquement sur push `main` (après CI)
+- ✅ Build les images **fresh**
+- ✅ Push sur DockerHub (`boubalaria/cloudshop-*:latest`)
+- ✅ Deploy automatique sur le VPS
+- 🎯 **But** : Déployer en production avec garantie de fraîcheur
+
+---
+
 ## Configuration en 5 Minutes
 
-### 1️⃣ Mettre à jour les images Kubernetes
+### 1️⃣ Pas de modification nécessaire !
 
-```bash
-# Remplacez 'votre_username' par votre nom d'utilisateur DockerHub
-make init
-# OU
-./scripts/update-k8s-images.sh votre_username
-```
+Les manifests Kubernetes sont déjà configurés avec `boubalaria` pour la production ! ✅
+
+**Deux environnements disponibles** :
+- `k8s/deployments/` - **Production** (DockerHub : `boubalaria/cloudshop-*`)
+- `k8s/deployments/local/` - **Local/Dev** (Images locales : `tp-final-*`)
 
 ### 2️⃣ Configurer les Secrets GitHub
 
@@ -43,13 +62,14 @@ cat ~/.ssh/cloudshop_deploy
 ```bash
 git add .
 git commit -m "Configure CI/CD pipeline"
-git push
+git push origin develop  # CI seulement (tests)
+# OU
+git push origin main     # CI + CD (tests + déploiement prod)
 ```
 
-✅ **C'est tout !** Le workflow GitHub Actions va automatiquement :
-- Builder les images
-- Les pusher sur DockerHub  
-- Déployer sur votre VPS Kubernetes
+✅ **Workflows déclenchés** :
+- Sur `develop` / PR : **CI uniquement** (build local + tests)
+- Sur `main` : **CI + CD** (tests + build + push DockerHub + deploy VPS)
 
 ---
 
