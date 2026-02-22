@@ -6,6 +6,7 @@ metadata:
   labels:
     app: api-gateway
     version: v1.0.0
+    environment: local
 spec:
   replicas: 3
   selector:
@@ -19,8 +20,8 @@ spec:
     spec:
       containers:
       - name: api-gateway
-        image: boubalaria/cloudshop-api-gateway:latest
-        imagePullPolicy: Always
+        image: tp-final-api-gateway:latest
+        imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8080
           name: http

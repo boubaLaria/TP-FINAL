@@ -1,0 +1,137 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+env:
+  DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+  DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+  REGISTRY: docker.io
+
+jobs:
+  build-and-push:
+    name: Build and Push Docker Images
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      
+      - name: Login to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+      
+      - name: Build and push Frontend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile
+          push: true
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/cloudshop-frontend:latest
+            ${{ secrets.DOCKER_USERNAME }}/cloudshop-frontend:${{ github.sha }}
+          cache-from: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/cloudshop-frontend:buildcache
+          cache-to: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/cloudshop-frontend:buildcache,mode=max
+      
+      - name: Build and push API Gateway
+        uses: docker/build-push-action@v5
+        with:
+          context: ./api-gateway
+          file: ./api-gateway/Dockerfile
+          push: true
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/cloudshop-api-gateway:latest
+            ${{ secrets.DOCKER_USERNAME }}/cloudshop-api-gateway:${{ github.sha }}
+          cache-from: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/cloudshop-api-gateway:buildcache
+          cache-to: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/cloudshop-api-gateway:buildcache,mode=max
+      
+      - name: Build and push Auth Service
+        uses: docker/build-push-action@v5
+        with:
+          context: ./auth-service
+          file: ./auth-service/Dockerfile
+          push: true
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/cloudshop-auth-service:latest
+            ${{ secrets.DOCKER_USERNAME }}/cloudshop-auth-service:${{ github.sha }}
+          cache-from: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/cloudshop-auth-service:buildcache
+          cache-to: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/cloudshop-auth-service:buildcache,mode=max
+      
+      - name: Build and push Products API
+        uses: docker/build-push-action@v5
+        with:
+          context: ./products-api
+          file: ./products-api/Dockerfile
+          push: true
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/cloudshop-products-api:latest
+            ${{ secrets.DOCKER_USERNAME }}/cloudshop-products-api:${{ github.sha }}
+          cache-from: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/cloudshop-products-api:buildcache
+          cache-to: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/cloudshop-products-api:buildcache,mode=max
+      
+      - name: Build and push Orders API
+        uses: docker/build-push-action@v5
+        with:
+          context: ./orders-api
+          file: ./orders-api/Dockerfile
+          push: true
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/cloudshop-orders-api:latest
+            ${{ secrets.DOCKER_USERNAME }}/cloudshop-orders-api:${{ github.sha }}
+          cache-from: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/cloudshop-orders-api:buildcache
+          cache-to: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/cloudshop-orders-api:buildcache,mode=max
+
+  deploy-to-vps:
+    name: Deploy to VPS Kubernetes
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Deploy to VPS via SSH
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USERNAME }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_SSH_PORT || 22 }}
+          script: |
+            # Pull les nouvelles images
+            echo "Pulling new Docker images..."
+            docker pull ${{ secrets.DOCKER_USERNAME }}/cloudshop-frontend:latest
+            docker pull ${{ secrets.DOCKER_USERNAME }}/cloudshop-api-gateway:latest
+            docker pull ${{ secrets.DOCKER_USERNAME }}/cloudshop-auth-service:latest
+            docker pull ${{ secrets.DOCKER_USERNAME }}/cloudshop-products-api:latest
+            docker pull ${{ secrets.DOCKER_USERNAME }}/cloudshop-orders-api:latest
+            
+            # Redémarrer les déploiements Kubernetes
+            echo "Restarting Kubernetes deployments..."
+            kubectl rollout restart deployment/frontend -n cloudshop-prod
+            kubectl rollout restart deployment/api-gateway -n cloudshop-prod
+            kubectl rollout restart deployment/auth-service -n cloudshop-prod
+            kubectl rollout restart deployment/orders-api -n cloudshop-prod
+            kubectl rollout restart deployment/products-api -n cloudshop-prod
+            
+            # Attendre que les déploiements soient prêts
+            echo "Waiting for deployments to be ready..."
+            kubectl rollout status deployment/frontend -n cloudshop-prod --timeout=300s
+            kubectl rollout status deployment/api-gateway -n cloudshop-prod --timeout=300s
+            kubectl rollout status deployment/auth-service -n cloudshop-prod --timeout=300s
+            kubectl rollout status deployment/orders-api -n cloudshop-prod --timeout=300s
+            kubectl rollout status deployment/products-api -n cloudshop-prod --timeout=300s
+            
+            # Vérifier l'état des pods
+            echo "Checking pod status..."
+            kubectl get pods -n cloudshop-prod
+            
+            echo "Deployment completed successfully!"

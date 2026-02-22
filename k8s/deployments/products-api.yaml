@@ -19,8 +19,8 @@ spec:
     spec:
       containers:
       - name: products-api
-        image: cloudshop/products-api:latest
-        imagePullPolicy: Never
+        image: boubalaria/cloudshop-products-api:latest
+        imagePullPolicy: Always
         ports:
         - containerPort: 8082
           name: http
