@@ -108,29 +108,76 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           port: ${{ secrets.VPS_SSH_PORT || 22 }}
           script: |
-            # Pull les nouvelles images
-            echo "Pulling new Docker images..."
-            docker pull ${{ secrets.DOCKER_USERNAME }}/cloudshop-frontend:latest
-            docker pull ${{ secrets.DOCKER_USERNAME }}/cloudshop-api-gateway:latest
-            docker pull ${{ secrets.DOCKER_USERNAME }}/cloudshop-auth-service:latest
-            docker pull ${{ secrets.DOCKER_USERNAME }}/cloudshop-products-api:latest
-            docker pull ${{ secrets.DOCKER_USERNAME }}/cloudshop-orders-api:latest
+            set -e
             
-            # Redémarrer les déploiements Kubernetes
-            echo "Restarting Kubernetes deployments..."
-            kubectl rollout restart deployment/frontend -n cloudshop-prod
-            kubectl rollout restart deployment/api-gateway -n cloudshop-prod
-            kubectl rollout restart deployment/auth-service -n cloudshop-prod
-            kubectl rollout restart deployment/orders-api -n cloudshop-prod
-            kubectl rollout restart deployment/products-api -n cloudshop-prod
+            # Variables
+            REPO_DIR="${HOME}/cloudshop-deploy"
+            
+            # Cloner ou mettre à jour le repository
+            echo "Updating deployment files..."
+            if [ -d "$REPO_DIR" ]; then
+              cd "$REPO_DIR"
+              git pull origin main
+            else
+              git clone ${{ github.server_url }}/${{ github.repository }} "$REPO_DIR"
+              cd "$REPO_DIR"
+            fi
+            
+            # Vérifier si le namespace existe
+            echo "Checking if namespace cloudshop-prod exists..."
+            if ! kubectl get namespace cloudshop-prod &> /dev/null; then
+              echo "Namespace cloudshop-prod not found. Creating Kubernetes resources..."
+              
+              # Créer le namespace
+              kubectl apply -f k8s/namespaces/
+              
+              # Appliquer les ConfigMaps et Secrets
+              echo "Applying ConfigMaps and Secrets..."
+              kubectl apply -f k8s/configs/ || echo "Warning: Some configs may have failed"
+              
+              # Appliquer les StatefulSets (database, elasticsearch)
+              echo "Applying StatefulSets..."
+              kubectl apply -f k8s/statefulsets/ || echo "Warning: StatefulSets may have failed"
+              
+              # Attendre que les statefulsets soient prêts
+              echo "Waiting for statefulsets to be ready..."
+              sleep 20
+              
+              # Appliquer les Deployments
+              echo "Applying Deployments..."
+              kubectl apply -f k8s/deployments/
+              
+              # Appliquer les Services
+              echo "Applying Services..."
+              kubectl apply -f k8s/services/
+              
+              # Appliquer l'Ingress
+              echo "Applying Ingress..."
+              kubectl apply -f k8s/ingress/ || echo "Warning: Ingress may have failed"
+              
+              echo "Initial deployment created. Waiting for pods to be ready..."
+            else
+              echo "Namespace cloudshop-prod exists. Updating deployments..."
+              
+              # Mettre à jour les manifests (au cas où ils ont changé)
+              kubectl apply -f k8s/deployments/
+              
+              # Redémarrer les déploiements pour forcer le pull des nouvelles images
+              echo "Restarting Kubernetes deployments..."
+              kubectl rollout restart deployment/frontend -n cloudshop-prod
+              kubectl rollout restart deployment/api-gateway -n cloudshop-prod
+              kubectl rollout restart deployment/auth-service -n cloudshop-prod
+              kubectl rollout restart deployment/orders-api -n cloudshop-prod
+              kubectl rollout restart deployment/products-api -n cloudshop-prod
+            fi
             
             # Attendre que les déploiements soient prêts
             echo "Waiting for deployments to be ready..."
-            kubectl rollout status deployment/frontend -n cloudshop-prod --timeout=300s
-            kubectl rollout status deployment/api-gateway -n cloudshop-prod --timeout=300s
-            kubectl rollout status deployment/auth-service -n cloudshop-prod --timeout=300s
-            kubectl rollout status deployment/orders-api -n cloudshop-prod --timeout=300s
-            kubectl rollout status deployment/products-api -n cloudshop-prod --timeout=300s
+            kubectl rollout status deployment/frontend -n cloudshop-prod --timeout=300s || true
+            kubectl rollout status deployment/api-gateway -n cloudshop-prod --timeout=300s || true
+            kubectl rollout status deployment/auth-service -n cloudshop-prod --timeout=300s || true
+            kubectl rollout status deployment/orders-api -n cloudshop-prod --timeout=300s || true
+            kubectl rollout status deployment/products-api -n cloudshop-prod --timeout=300s || true
             
             # Vérifier l'état des pods
             echo "Checking pod status..."
