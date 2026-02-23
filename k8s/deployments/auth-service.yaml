@@ -19,7 +19,7 @@ spec:
     spec:
       containers:
       - name: auth-service
-        image: boubalaria/cloudshop-auth-service:f2d14a1a1da57ea06d3ed1671536c31b53ac2905
+        image: boubalaria/cloudshop-auth-service:c3bfbbae3b8735133968ba0774ca2bb5cdac460a
         imagePullPolicy: Always
         ports:
         - containerPort: 8081

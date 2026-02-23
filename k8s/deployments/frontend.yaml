@@ -19,7 +19,7 @@ spec:
     spec:
       containers:
       - name: frontend
-        image: boubalaria/cloudshop-frontend:f2d14a1a1da57ea06d3ed1671536c31b53ac2905
+        image: boubalaria/cloudshop-frontend:c3bfbbae3b8735133968ba0774ca2bb5cdac460a
         imagePullPolicy: Always
         ports:
         - containerPort: 3000
