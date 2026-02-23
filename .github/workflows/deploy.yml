@@ -1,4 +1,4 @@
-name: Deploy to Production
+name: Deploy to Production (GitOps)
 
 on:
   push:
@@ -6,214 +6,55 @@ on:
       - main
   workflow_dispatch:
 
-env:
-  DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-  DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
-  REGISTRY: docker.io
-
 jobs:
+  # --- PARTIE 1 : BUILD & PUSH (Inchangée) ---
   build-and-push:
     name: Build and Push Docker Images
     runs-on: ubuntu-latest
-    environment: DOCKER_HUB_SECRET
-    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
       
       - name: Login to DockerHub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
-      
-      - name: Build and push Frontend
-        uses: docker/build-push-action@v5
-        with:
-          context: ./frontend
-          file: ./frontend/Dockerfile
-          push: true
-          tags: |
-            ${{ secrets.DOCKER_USERNAME }}/cloudshop-frontend:latest
-            ${{ secrets.DOCKER_USERNAME }}/cloudshop-frontend:${{ github.sha }}
-          cache-from: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/cloudshop-frontend:buildcache
-          cache-to: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/cloudshop-frontend:buildcache,mode=max
-      
-      - name: Build and push API Gateway
-        uses: docker/build-push-action@v5
-        with:
-          context: ./api-gateway
-          file: ./api-gateway/Dockerfile
-          push: true
-          tags: |
-            ${{ secrets.DOCKER_USERNAME }}/cloudshop-api-gateway:latest
-            ${{ secrets.DOCKER_USERNAME }}/cloudshop-api-gateway:${{ github.sha }}
-          cache-from: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/cloudshop-api-gateway:buildcache
-          cache-to: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/cloudshop-api-gateway:buildcache,mode=max
-      
-      - name: Build and push Auth Service
-        uses: docker/build-push-action@v5
-        with:
-          context: ./auth-service
-          file: ./auth-service/Dockerfile
-          push: true
-          tags: |
-            ${{ secrets.DOCKER_USERNAME }}/cloudshop-auth-service:latest
-            ${{ secrets.DOCKER_USERNAME }}/cloudshop-auth-service:${{ github.sha }}
-          cache-from: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/cloudshop-auth-service:buildcache
-          cache-to: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/cloudshop-auth-service:buildcache,mode=max
-      
-      - name: Build and push Products API
-        uses: docker/build-push-action@v5
-        with:
-          context: ./products-api
-          file: ./products-api/Dockerfile
-          push: true
-          tags: |
-            ${{ secrets.DOCKER_USERNAME }}/cloudshop-products-api:latest
-            ${{ secrets.DOCKER_USERNAME }}/cloudshop-products-api:${{ github.sha }}
-          cache-from: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/cloudshop-products-api:buildcache
-          cache-to: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/cloudshop-products-api:buildcache,mode=max
-      
-      - name: Build and push Orders API
-        uses: docker/build-push-action@v5
-        with:
-          context: ./orders-api
-          file: ./orders-api/Dockerfile
-          push: true
-          tags: |
-            ${{ secrets.DOCKER_USERNAME }}/cloudshop-orders-api:latest
-            ${{ secrets.DOCKER_USERNAME }}/cloudshop-orders-api:${{ github.sha }}
-          cache-from: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/cloudshop-orders-api:buildcache
-          cache-to: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/cloudshop-orders-api:buildcache,mode=max
 
-  deploy-to-vps:
-    name: Deploy to VPS Kubernetes
+      - name: Build and push services
+        # On utilise une boucle simple pour la lisibilité
+        run: |
+          services=("frontend" "api-gateway" "auth-service" "products-api" "orders-api")
+          for service in "${services[@]}"; do
+            docker build -t ${{ secrets.DOCKER_USERNAME }}/cloudshop-$service:${{ github.sha }} ./$service
+            docker push ${{ secrets.DOCKER_USERNAME }}/cloudshop-$service:${{ github.sha }}
+          done
+
+  # --- PARTIE 2 : LE NOUVEAU CD (GITOPS) ---
+  update-gitops:
+    name: Update GitOps Manifests
     needs: build-and-push
     runs-on: ubuntu-latest
-    environment: DOCKER_HUB_SECRET
-    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
-      - name: Deploy to VPS via SSH
-        uses: appleboy/ssh-action@v1.0.0
         with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USERNAME }}
-          key: ${{ secrets.VPS_SSH_KEY }}
-          port: ${{ secrets.VPS_SSH_PORT || 22 }}
-          script: |
-            set -e
-            
-            # Variables
-            REPO_DIR="${HOME}/cloudshop-deploy"
-            
-            # Cloner ou mettre à jour le repository
-            echo "Updating deployment files..."
-            if [ -d "$REPO_DIR" ]; then
-              cd "$REPO_DIR"
-              git pull origin main
-            else
-              git clone ${{ github.server_url }}/${{ github.repository }} "$REPO_DIR"
-              cd "$REPO_DIR"
-            fi
-            
-            # Vérifier si le namespace existe
-            echo "Checking if namespace cloudshop-prod exists..."
-            if ! kubectl get namespace cloudshop-prod &> /dev/null; then
-              echo "Namespace cloudshop-prod not found. Creating Kubernetes resources..."
-              
-              # Créer le namespace
-              kubectl apply -f k8s/namespaces/
-              
-              # Appliquer les ConfigMaps et Secrets
-              echo "Applying ConfigMaps and Secrets..."
-              kubectl apply -f k8s/configs/ || echo "Warning: Some configs may have failed"
-              
-              # Appliquer les StatefulSets (database, elasticsearch)
-              echo "Applying StatefulSets..."
-              kubectl apply -f k8s/statefulsets/ || echo "Warning: StatefulSets may have failed"
-              
-              # Attendre que les statefulsets soient prêts
-              echo "Waiting for statefulsets to be ready..."
-              sleep 10
-              echo "Checking statefulset status..."
-              kubectl get statefulsets -n cloudshop-prod || true
-              kubectl get pods -n cloudshop-prod | grep -E 'postgres|elasticsearch' || true
-              echo "Note: StatefulSets may take a few minutes to be fully ready"
-              sleep 10
-              
-              # Appliquer les Deployments
-              echo "Applying Deployments..."
-              kubectl apply -f k8s/deployments/
-              
-              # Appliquer les Services
-              echo "Applying Services..."
-              kubectl apply -f k8s/services/
-              
-              # Appliquer l'Ingress
-              echo "Applying Ingress..."
-              kubectl apply -f k8s/ingress/ || echo "Warning: Ingress may have failed"
-              
-              echo "Initial deployment created. Waiting for pods to be ready..."
-            else
-              echo "Namespace cloudshop-prod exists. Updating deployments..."
-              
-              # Mettre à jour les manifests (au cas où ils ont changé)
-              kubectl apply -f k8s/deployments/
-              
-              # Redémarrer les déploiements pour forcer le pull des nouvelles images
-              echo "Restarting Kubernetes deployments..."
-              kubectl rollout restart deployment/frontend -n cloudshop-prod
-              kubectl rollout restart deployment/api-gateway -n cloudshop-prod
-              kubectl rollout restart deployment/auth-service -n cloudshop-prod
-              kubectl rollout restart deployment/orders-api -n cloudshop-prod
-              kubectl rollout restart deployment/products-api -n cloudshop-prod
-            fi
-            
-            # Attendre que les déploiements soient prêts
-            echo "Waiting for deployments to be ready..."
-            kubectl rollout status deployment/frontend -n cloudshop-prod --timeout=120s || echo "Frontend timeout - continuing..."
-            kubectl rollout status deployment/api-gateway -n cloudshop-prod --timeout=120s || echo "API Gateway timeout - continuing..."
-            kubectl rollout status deployment/auth-service -n cloudshop-prod --timeout=120s || echo "Auth Service timeout - continuing..."
-            kubectl rollout status deployment/orders-api -n cloudshop-prod --timeout=120s || echo "Orders API timeout - continuing..."
-            kubectl rollout status deployment/products-api -n cloudshop-prod --timeout=120s || echo "Products API timeout - continuing..."
-            
-            # Vérifier l'état des pods
-            echo ""
-            echo "==========================="
-            echo "Pod Status:"
-            echo "==========================="
-            kubectl get pods -n cloudshop-prod -o wide
-            
-            echo ""
-            echo "==========================="
-            echo "Deployment Status:"
-            echo "==========================="
-            kubectl get deployments -n cloudshop-prod
-            
-            echo ""
-            echo "==========================="
-            echo "Services:"
-            echo "==========================="
-            kubectl get svc -n cloudshop-prod
-            
-            echo ""
-            echo "==========================="
-            echo "Recent Events (if any issues):"
-            echo "==========================="
-            kubectl get events -n cloudshop-prod --sort-by='.lastTimestamp' | tail -20 || true
-            
-            echo ""
-            echo "Deployment process completed!"
-            echo "Note: Pods may still be starting. Check status with: kubectl get pods -n cloudshop-prod"
-            echo ""
-            echo "To debug issues:"
-            echo "  - View pod details: kubectl describe pod <pod-name> -n cloudshop-prod"
-            echo "  - View logs: kubectl logs <pod-name> -n cloudshop-prod"
-            echo "  - View events: kubectl get events -n cloudshop-prod"
+          # Nécessite un Personal Access Token (PAT) ou GITHUB_TOKEN avec droits d'écriture
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update Image Tags in YAML
+        # On utilise 'sed' pour mettre à jour les tags avec le SHA du commit GitHub
+        run: |
+          sed -i "s|image: .*cloudshop-frontend:.*|image: ${{ secrets.DOCKER_USERNAME }}/cloudshop-frontend:${{ github.sha }}|g" k8s/deployments/frontend.yaml
+          sed -i "s|image: .*cloudshop-api-gateway:.*|image: ${{ secrets.DOCKER_USERNAME }}/cloudshop-api-gateway:${{ github.sha }}|g" k8s/deployments/gateway.yaml
+          sed -i "s|image: .*cloudshop-auth-service:.*|image: ${{ secrets.DOCKER_USERNAME }}/cloudshop-auth-service:${{ github.sha }}|g" k8s/deployments/auth.yaml
+          sed -i "s|image: .*cloudshop-products-api:.*|image: ${{ secrets.DOCKER_USERNAME }}/cloudshop-products-api:${{ github.sha }}|g" k8s/deployments/products.yaml
+          sed -i "s|image: .*cloudshop-orders-api:.*|image: ${{ secrets.DOCKER_USERNAME }}/cloudshop-orders-api:${{ github.sha }}|g" k8s/deployments/orders.yaml
+
+      - name: Commit and Push changes to Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add k8s/deployments/*.yaml
+          git commit -m "chore: deploy version ${{ github.sha }} [skip ci]"
+          git push
