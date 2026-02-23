@@ -13,7 +13,7 @@ RUN npm install --omit=dev && npm install vite @vitejs/plugin-react
 COPY . .
 
 # Set API URL for build
-ARG VITE_API_URL=http://api.local:32286/api
+ARG VITE_API_URL=https://cloudshop.boubalaria.com/api/
 ENV VITE_API_URL=$VITE_API_URL
 
 # Build the application
