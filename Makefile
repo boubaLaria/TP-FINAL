@@ -110,6 +110,29 @@ k8s-restart: ## Redémarre tous les déploiements K8s
 	kubectl rollout restart deployment/orders-api -n cloudshop-prod
 	kubectl rollout restart deployment/products-api -n cloudshop-prod
 
+ingress-install: ## Installe NGINX Ingress Controller
+	@./scripts/install-ingress.sh
+
+ingress-status: ## Affiche le status de l'Ingress
+	@echo "$(GREEN)Ingress Controller:$(NC)"
+	@kubectl get pods -n ingress-nginx
+	@echo ""
+	@echo "$(GREEN)Ingress Controller Service:$(NC)"
+	@kubectl get svc ingress-nginx-controller -n ingress-nginx
+	@echo ""
+	@echo "$(GREEN)Application Ingress:$(NC)"
+	@kubectl get ingress -n cloudshop-prod
+	@kubectl describe ingress cloudshop-ingress -n cloudshop-prod || true
+
+ingress-logs: ## Affiche les logs de l'Ingress Controller
+	kubectl logs -f -n ingress-nginx -l app.kubernetes.io/component=controller
+
+fix-storage: ## Fix storage issues (bascule vers hostPath)
+	@./scripts/fix-storage.sh
+
+deployment-status: ## Affiche le status complet du déploiement
+	@./scripts/check-deployment-status.sh
+
 clean: ## Nettoie les images Docker locales
 	@echo "$(YELLOW)Nettoyage des images Docker...$(NC)"
 	docker image prune -f
