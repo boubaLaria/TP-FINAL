@@ -19,7 +19,7 @@ spec:
           service:
             name: frontend
             port:
-              number: 3000
+              number: 80
       # API Gateway sur /api
       - path: /api
         pathType: Prefix

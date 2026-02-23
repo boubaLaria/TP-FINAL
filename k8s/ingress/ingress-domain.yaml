@@ -8,7 +8,6 @@ metadata:
 spec:
   ingressClassName: nginx
   rules:
-  # Remplacez YOUR_DOMAIN par votre domaine ou IP
   - host: cloudshop.boubalaria.com
     http:
       paths:
@@ -18,7 +17,7 @@ spec:
           service:
             name: frontend
             port:
-              number: 3000
+              number: 80
       - path: /api
         pathType: Prefix
         backend:
