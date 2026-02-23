@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import Header from './components/Header'
+import Footer from './components/Footer'
 import ProductList from './components/ProductList'
 import Cart from './components/Cart'
 import OrderForm from './components/OrderForm'
@@ -167,6 +168,8 @@ function App() {
           <OrderHistory user={user} />
         )}
       </main>
+      
+      <Footer />
     </div>
   )
 }
