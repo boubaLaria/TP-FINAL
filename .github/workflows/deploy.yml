@@ -6,6 +6,10 @@ on:
       - main
   workflow_dispatch:
 
+permissions:
+  contents: write
+  packages: write
+
 jobs:
   # --- PARTIE 1 : BUILD & PUSH (Inchangée) ---
   build-and-push:
@@ -41,8 +45,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          # Nécessite un Personal Access Token (PAT) ou GITHUB_TOKEN avec droits d'écriture
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ github.token }}
 
       - name: Update Image Tags in YAML
         # On utilise 'sed' pour mettre à jour les tags avec le SHA du commit GitHub
