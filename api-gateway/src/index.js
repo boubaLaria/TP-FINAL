@@ -12,8 +12,8 @@ const PORT = process.env.PORT || 8080;
 
 // Service URLs
 const AUTH_SERVICE_URL = process.env.AUTH_SERVICE_URL || 'http://auth-service:8081';
-const PRODUCTS_SERVICE_URL = process.env.PRODUCTS_SERVICE_URL || 'http://products-api:8082';
-const ORDERS_SERVICE_URL = process.env.ORDERS_SERVICE_URL || 'http://orders-api:8083';
+const PRODUCTS_SERVICE_URL = process.env.PRODUCTS_SERVICE_URL || 'http://products-service:8082';
+const ORDERS_SERVICE_URL = process.env.ORDERS_SERVICE_URL || 'http://orders-service:8083';
 
 // Security middleware
 app.use(helmet());

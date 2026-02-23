@@ -3,26 +3,26 @@ kind: Ingress
 metadata:
   name: cloudshop-ingress
   namespace: cloudshop-prod
+  annotations:
+    # On enlève rewrite-target car le Gateway s'en occupe
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
 spec:
   ingressClassName: nginx
   rules:
-  - host: shop.local
+  - host: cloudshop.boubalaria.com
     http:
       paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: frontend
-            port:
-              number: 80
-  - host: api.local
-    http:
-      paths:
-      - path: /
+      - path: /api
         pathType: Prefix
         backend:
           service:
             name: api-gateway
             port:
               number: 8080
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: frontend
+            port:
+              number: 80 # Ou 3000 selon ton service
