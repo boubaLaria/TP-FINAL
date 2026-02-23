@@ -19,7 +19,7 @@ spec:
     spec:
       containers:
       - name: api-gateway
-        image: boubalaria/cloudshop-api-gateway:latest
+        image: boubalaria/cloudshop-api-gateway:5790913716440a6072da6d0439222d081cbbba2a
         imagePullPolicy: Always
         ports:
         - containerPort: 8080
