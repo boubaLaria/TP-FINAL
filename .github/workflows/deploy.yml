@@ -48,10 +48,10 @@ jobs:
         # On utilise 'sed' pour mettre à jour les tags avec le SHA du commit GitHub
         run: |
           sed -i "s|image: .*cloudshop-frontend:.*|image: ${{ secrets.DOCKER_USERNAME }}/cloudshop-frontend:${{ github.sha }}|g" k8s/deployments/frontend.yaml
-          sed -i "s|image: .*cloudshop-api-gateway:.*|image: ${{ secrets.DOCKER_USERNAME }}/cloudshop-api-gateway:${{ github.sha }}|g" k8s/deployments/gateway.yaml
-          sed -i "s|image: .*cloudshop-auth-service:.*|image: ${{ secrets.DOCKER_USERNAME }}/cloudshop-auth-service:${{ github.sha }}|g" k8s/deployments/auth.yaml
-          sed -i "s|image: .*cloudshop-products-api:.*|image: ${{ secrets.DOCKER_USERNAME }}/cloudshop-products-api:${{ github.sha }}|g" k8s/deployments/products.yaml
-          sed -i "s|image: .*cloudshop-orders-api:.*|image: ${{ secrets.DOCKER_USERNAME }}/cloudshop-orders-api:${{ github.sha }}|g" k8s/deployments/orders.yaml
+          sed -i "s|image: .*cloudshop-api-gateway:.*|image: ${{ secrets.DOCKER_USERNAME }}/cloudshop-api-gateway:${{ github.sha }}|g" k8s/deployments/api-gateway.yaml
+          sed -i "s|image: .*cloudshop-auth-service:.*|image: ${{ secrets.DOCKER_USERNAME }}/cloudshop-auth-service:${{ github.sha }}|g" k8s/deployments/auth-service.yaml
+          sed -i "s|image: .*cloudshop-products-api:.*|image: ${{ secrets.DOCKER_USERNAME }}/cloudshop-products-api:${{ github.sha }}|g" k8s/deployments/products-api.yaml
+          sed -i "s|image: .*cloudshop-orders-api:.*|image: ${{ secrets.DOCKER_USERNAME }}/cloudshop-orders-api:${{ github.sha }}|g" k8s/deployments/orders-api.yaml
 
       - name: Commit and Push changes to Git
         run: |
