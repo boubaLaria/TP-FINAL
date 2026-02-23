@@ -19,7 +19,7 @@ spec:
     spec:
       containers:
       - name: orders-api
-        image: boubalaria/cloudshop-orders-api:5790913716440a6072da6d0439222d081cbbba2a
+        image: boubalaria/cloudshop-orders-api:f2d14a1a1da57ea06d3ed1671536c31b53ac2905
         imagePullPolicy: Always
         ports:
         - containerPort: 8083
