@@ -1,5 +1,7 @@
 # 🚀 Guide de Démarrage Rapide - CI/CD CloudShop
 
+> 📘 **Documentation Principale** : Consultez [README.md](README.md) pour une vue d'ensemble complète du projet.
+
 ## 🎯 Architecture CI/CD
 
 **2 workflows séparés pour éviter la duplication** :
@@ -39,22 +41,6 @@ Ajoutez ces secrets :
 ```
 DOCKER_USERNAME=votre_username
 DOCKER_PASSWORD=votre_token_dockerhub
-VPS_HOST=192.168.1.100
-VPS_USERNAME=root
-VPS_SSH_KEY=<contenu de votre clé privée SSH>
-```
-
-#### 🔑 Générer la clé SSH :
-
-```bash
-# Sur votre machine locale
-ssh-keygen -t ed25519 -C "github-actions" -f ~/.ssh/cloudshop_deploy
-
-# Copier la clé publique sur le VPS
-ssh-copy-id -i ~/.ssh/cloudshop_deploy.pub root@192.168.1.100
-
-# Afficher la clé privée pour GitHub Secrets
-cat ~/.ssh/cloudshop_deploy
 ```
 
 ### 3️⃣ Pousser les changements
@@ -110,22 +96,14 @@ make docker-compose-up
 make docker-compose-logs
 ```
 
----
+## 🌐 Accès aux Services
 
-## 📋 Checklist de Configuration VPS
+Après déploiement, accédez à vos services :
 
-Assurez-vous que votre VPS a :
-
-- ✅ Docker installé : `docker --version`
-- ✅ kubectl configuré : `kubectl get nodes`
-- ✅ Namespace créé : `kubectl get ns cloudshop-prod`
-- ✅ SSH accessible : `ssh root@VPS_IP`
-
-Si manquant, appliquez les manifests Kubernetes :
-
-```bash
-make k8s-apply
-```
+- 🏪 **CloudShop** : https://cloudshop.boubalaria.com/
+- 📊 **Grafana** : https://grafana.boubalaria.com/
+- 🔄 **ArgoCD** : https://argo.boubalaria.com/
+- 🐳 **Docker Hub** : https://hub.docker.com/repositories/boubalaria
 
 ---
 
@@ -135,23 +113,9 @@ make k8s-apply
 1. Allez dans l'onglet **Actions**
 2. Vérifiez que le workflow est vert ✅
 
-### Sur le VPS
-```bash
-ssh root@VPS_IP
-kubectl get pods -n cloudshop-prod
-```
-
-Tous les pods doivent être `Running` 🟢
-
 ---
 
 ## 🆘 Problèmes Courants
-
-### "Permission denied (publickey)"
-➡️ La clé SSH n'est pas correctement configurée
-```bash
-ssh-copy-id -i ~/.ssh/cloudshop_deploy.pub root@VPS_IP
-```
 
 ### "deployment.apps/frontend not found"
 ➡️ Appliquez d'abord les manifests K8s
