@@ -12,11 +12,13 @@ import './App.css'
 
 function App() {
   const [user, setUser] = useState(null)
+  const [allProducts, setAllProducts] = useState([])
   const [products, setProducts] = useState([])
   const [cart, setCart] = useState([])
   const [view, setView] = useState('products') // products, cart, checkout, login, register, orders
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
+  const [filters, setFilters] = useState({ category: 'all', priceRange: [0, 10000] })
 
   useEffect(() => {
     // Check for stored token
@@ -34,11 +36,33 @@ function App() {
     setLoading(true)
     try {
       const data = await getProducts()
+      setAllProducts(data)
       setProducts(data)
+      setFilters({ category: 'all', priceRange: [0, 10000] })
+      setSearchQuery('')
     } catch (error) {
       console.error('Failed to load products:', error)
     }
     setLoading(false)
+  }
+
+  const applyFilters = (newFilters) => {
+    setFilters(newFilters)
+    let filtered = allProducts
+
+    // Apply category filter
+    if (newFilters.category !== 'all') {
+      filtered = filtered.filter(
+        product => product.category?.toLowerCase() === newFilters.category.toLowerCase()
+      )
+    }
+
+    // Apply price filter
+    filtered = filtered.filter(
+      product => product.price >= newFilters.priceRange[0] && product.price <= newFilters.priceRange[1]
+    )
+
+    setProducts(filtered)
   }
 
   const handleSearch = async (query) => {
@@ -47,7 +71,9 @@ function App() {
     try {
       if (query.trim()) {
         const data = await searchProducts(query)
+        setAllProducts(data)
         setProducts(data)
+        setFilters({ category: 'all', priceRange: [0, 10000] })
       } else {
         await loadProducts()
       }
@@ -141,8 +167,10 @@ function App() {
         {view === 'products' && (
           <ProductList
             products={products}
+            allProducts={allProducts}
             loading={loading}
             onAddToCart={addToCart}
+            onFilterChange={applyFilters}
           />
         )}
         
