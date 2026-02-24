@@ -1,16 +1,20 @@
 import React from 'react'
+import Filter from './Filter'
 
-function ProductList({ products, loading, onAddToCart }) {
+function ProductList({ products, allProducts, loading, onAddToCart, onFilterChange }) {
   if (loading) {
     return <div className="loading">Chargement des produits...</div>
   }
 
   if (products.length === 0) {
     return (
-      <div className="empty-state">
-        <div className="icon">📦</div>
-        <h3>Aucun produit trouvé</h3>
-        <p>Essayez une autre recherche</p>
+      <div className="products-container">
+        <Filter products={allProducts} onFilterChange={onFilterChange} />
+        <div className="empty-state">
+          <div className="icon">📦</div>
+          <h3>Aucun produit trouvé</h3>
+          <p>Essayez de modifier vos filtres ou votre recherche</p>
+        </div>
       </div>
     )
   }
@@ -35,32 +39,35 @@ function ProductList({ products, loading, onAddToCart }) {
   }
 
   return (
-    <div className="product-grid">
-      {products.map(product => {
-        const stockStatus = getStockStatus(product.stock)
-        return (
-          <div key={product.id} className="product-card">
-            <div className="product-image">
-              {getCategoryEmoji(product.category)}
-            </div>
-            <div className="product-info">
-              <h3>{product.name}</h3>
-              <p>{product.description}</p>
-              <div className={`product-stock ${stockStatus.class}`}>
-                {stockStatus.text}
+    <div className="products-container">
+      <Filter products={allProducts} onFilterChange={onFilterChange} />
+      <div className="product-grid">
+        {products.map(product => {
+          const stockStatus = getStockStatus(product.stock)
+          return (
+            <div key={product.id} className="product-card">
+              <div className="product-image">
+                {getCategoryEmoji(product.category)}
               </div>
-              <div className="product-price">{product.price.toFixed(2)} €</div>
-              <button
-                className="btn-primary"
-                onClick={() => onAddToCart(product)}
-                disabled={product.stock === 0}
-              >
-                {product.stock === 0 ? 'Indisponible' : 'Ajouter au panier'}
-              </button>
+              <div className="product-info">
+                <h3>{product.name}</h3>
+                <p>{product.description}</p>
+                <div className={`product-stock ${stockStatus.class}`}>
+                  {stockStatus.text}
+                </div>
+                <div className="product-price">{product.price.toFixed(2)} €</div>
+                <button
+                  className="btn-primary"
+                  onClick={() => onAddToCart(product)}
+                  disabled={product.stock === 0}
+                >
+                  {product.stock === 0 ? 'Indisponible' : 'Ajouter au panier'}
+                </button>
+              </div>
             </div>
-          </div>
-        )
-      })}
+          )
+        })}
+      </div>
     </div>
   )
 }
