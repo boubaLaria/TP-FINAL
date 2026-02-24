@@ -1,6 +1,6 @@
 # 🚀 Guide de Démarrage Rapide - CI/CD CloudShop
 
-> 📘 **Documentation Principale** : Consultez [README.md](README.md) pour une vue d'ensemble complète du projet.
+> 📘 **Documentation Principale** : Consultez [QUICKSTART.md](DOCUMENTATION.md) pour une vue d'ensemble complète du projet.
 
 ## 🎯 Architecture CI/CD
 

@@ -302,22 +302,6 @@ Jobs:
 ```bash
 DOCKER_USERNAME=votre_username
 DOCKER_PASSWORD=votre_token_dockerhub
-VPS_HOST=192.168.1.100
-VPS_USERNAME=root
-VPS_SSH_KEY=<contenu de votre clé privée SSH>
-```
-
-#### 🔑 Générer la clé SSH :
-
-```bash
-# Sur votre machine locale
-ssh-keygen -t ed25519 -C "github-actions" -f ~/.ssh/cloudshop_deploy
-
-# Copier la clé publique sur le VPS
-ssh-copy-id -i ~/.ssh/cloudshop_deploy.pub root@192.168.1.100
-
-# Afficher la clé privée pour GitHub Secrets
-cat ~/.ssh/cloudshop_deploy
 ```
 
 Voir [DEPLOYMENT.md](DEPLOYMENT.md) pour les détails complets.
