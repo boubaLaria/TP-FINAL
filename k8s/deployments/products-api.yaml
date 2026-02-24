@@ -19,7 +19,7 @@ spec:
     spec:
       containers:
       - name: products-api
-        image: boubalaria/cloudshop-products-api:5046ffff9cc2c3758ff5ecdacac4029f29d9aecb
+        image: boubalaria/cloudshop-products-api:bf8562b8698c31c3584b9732ecf0da2b81f2e3ad
         imagePullPolicy: Always
         ports:
         - containerPort: 8082
